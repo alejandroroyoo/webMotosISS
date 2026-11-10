@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Moto Fleet · Telemetría en directo</title>
+
+  <!-- Mapa (Leaflet) y gráficas (Chart.js) desde CDN, como el Chart.js de la práctica -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/dashboard.js" defer></script>
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <div>
+        <h1>Moto Fleet</h1>
+        <p class="brand-sub">Telemetría en directo · Azure IoT Hub</p>
+      </div>
+    </div>
+    <div class="topbar-stats">
+      <div class="stat"><span class="stat-value" id="motoCount">0</span><span class="stat-label">motos</span></div>
+      <div class="stat"><span class="stat-value" id="criticalCount">0</span><span class="stat-label">críticas</span></div>
+      <div class="conn" id="connection" data-state="connecting">
+        <span class="conn-dot"></span><span class="conn-text">Conectando…</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel map-panel" aria-label="Mapa">
+      <div class="panel-head">
+        <h2>Mapa</h2>
+        <div class="legend">
+          <span class="legend-item"><i class="dot NORMAL"></i>Normal</span>
+          <span class="legend-item"><i class="dot WARNING"></i>Aviso</span>
+          <span class="legend-item"><i class="dot CRITICAL"></i>Crítico</span>
+        </div>
+      </div>
+      <div id="map"></div>
+    </section>
+
+    <section class="panel alerts-panel" aria-label="Alertas">
+      <div class="panel-head">
+        <h2>Alertas</h2>
+        <span class="panel-hint">Las más recientes arriba</span>
+      </div>
+      <ol id="alerts" class="alerts"></ol>
+      <p id="noAlerts" class="empty">Sin alertas por ahora.</p>
+    </section>
+
+    <section class="panel fleet-panel" aria-label="Motos">
+      <div class="panel-head">
+        <h2>Motos</h2>
+        <span class="panel-hint">Pulsa una moto para ver sus gráficas</span>
+      </div>
+      <div id="cards" class="cards"></div>
+      <p id="noMotos" class="empty">Esperando datos de las motos…</p>
+    </section>
+
+    <section class="panel detail-panel" aria-label="Detalle de la moto">
+      <div class="panel-head">
+        <h2>Detalle · <span id="selectedName">—</span></h2>
+        <span class="panel-hint" id="selectedReasons"></span>
+      </div>
+      <div class="charts">
+        <figure class="chart-box">
+          <figcaption>Velocidad (km/h) y revoluciones (rpm)</figcaption>
+          <div class="chart-wrap"><canvas id="chartSpeed"></canvas></div>
+        </figure>
+        <figure class="chart-box">
+          <figcaption>Temperatura del motor (°C) y batería (V)</figcaption>
+          <div class="chart-wrap"><canvas id="chartEngine"></canvas></div>
+        </figure>
+      </div>
+    </section>
+  </main>
+
+  <template id="cardTemplate">
+    <button type="button" class="card">
+      <div class="card-head">
+        <span class="card-id"></span>
+        <span class="pill"></span>
+      </div>
+      <div class="card-speed"><span class="big" data-f="speed">0</span><span class="unit">km/h</span>
+        <span class="lean" title="Inclinación"><span class="lean-bar"></span><span class="lean-value" data-f="lean">0°</span></span>
+      </div>
+      <dl class="metrics">
+        <div><dt>RPM</dt><dd data-f="rpm">—</dd></div>
+        <div><dt>Motor</dt><dd data-f="temp">—</dd></div>
+        <div><dt>Batería</dt><dd data-f="battery">—</dd></div>
+        <div><dt>Gasolina</dt><dd data-f="fuel">—</dd></div>
+        <div><dt>Neum. del.</dt><dd data-f="front">—</dd></div>
+        <div><dt>Neum. tras.</dt><dd data-f="rear">—</dd></div>
+      </dl>
+      <p class="card-reasons" data-f="reasons"></p>
+      <p class="card-foot"><span data-f="source"></span><span data-f="ago"></span></p>
+    </button>
+  </template>
+</body>
+</html>

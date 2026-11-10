@@ -1,0 +1,19 @@
+{
+  "name": "moto-fleet-webapp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dashboard en tiempo real de las motos (IoT Hub -> WebSocket -> navegador)",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "demo": "node -e \"process.env.DEMO_MODE='true'; require('./server.js')\""
+  },
+  "dependencies": {
+    "@azure/event-hubs": "^5.12.0",
+    "express": "^4.21.0",
+    "rhea-promise": "^3.0.0",
+    "ws": "^8.18.0"
+  }
+}
