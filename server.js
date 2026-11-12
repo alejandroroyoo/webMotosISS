@@ -66,6 +66,8 @@ wss.broadcast = (data) => {
 
 // Al conectarse un navegador, se le manda lo que ya sabemos
 wss.on('connection', (ws) => {
+  // Sin este manejador, un error en un socket (p. ej. una trama inválida) tumba el proceso
+  ws.on('error', (err) => console.error('WebSocket client error:', err.message || err));
   ws.send(JSON.stringify({
     type: 'snapshot',
     motos: Array.from(latestByMoto.values()),

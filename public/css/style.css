@@ -126,6 +126,8 @@ h1, h2 { margin: 0; font-family: var(--font-display); letter-spacing: 0.02em; }
 .dot.CRITICAL { background: var(--crit); }
 
 .leaflet-container { font-family: var(--font-ui); }
+/* Los mosaicos de OpenStreetMap son claros: se invierten para un mapa oscuro */
+.leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9); }
 .leaflet-tooltip.moto-label {
   background: rgba(13, 15, 19, 0.85); color: var(--text);
   border: 1px solid var(--border); border-radius: 6px;

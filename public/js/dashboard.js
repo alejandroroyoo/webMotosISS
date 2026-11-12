@@ -52,6 +52,7 @@
   const $ = (id) => document.getElementById(id);
   const translate = (r) => REASON_TEXT[r] || r;
   const fmt = (v, d = 0) => (typeof v === 'number' && Number.isFinite(v) ? v.toFixed(d) : '—');
+  const isValidTime = (t) => t !== undefined && t !== null && !Number.isNaN(new Date(t).getTime());
   const timeOf = (iso) => new Date(iso).toLocaleTimeString('es-ES', { hour12: false });
 
   // ------------------------------------------------------------ estado de una lectura
@@ -90,10 +91,10 @@
 
   function initMap() {
     map = L.map('map', { zoomControl: true, attributionControl: true }).setView([40.4168, -3.7038], 12);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    // Mosaicos de OpenStreetMap (sin API key). Se oscurecen por CSS (.leaflet-tile-pane)
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      subdomains: 'abcd',
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(map);
   }
 
@@ -108,7 +109,10 @@
       moto.marker = L.circleMarker(pos, {
         radius: 9, weight: 3, color: '#0d0f13', fillColor: color, fillOpacity: 1,
       }).addTo(map);
-      moto.marker.bindTooltip(moto.id, {
+      // Con un string, Leaflet lo mete como HTML; con un elemento, el id va como texto
+      const label = document.createElement('span');
+      label.textContent = moto.id;
+      moto.marker.bindTooltip(label, {
         permanent: true, direction: 'right', offset: [10, 0], className: 'moto-label',
       });
       moto.marker.on('click', () => select(moto.id));
@@ -296,16 +300,33 @@
     $('noAlerts').hidden = true;
   }
 
-  function addCrashAlert(msg) {
+  // Alertas que manda el servidor (messageType = alert). Las caídas tienen su
+  // propio texto; cualquier otro tipo se muestra con lo que traiga el mensaje.
+  function addServerAlert(msg) {
     const d = msg.data;
+    const time = isValidTime(d.detectedAt) ? d.detectedAt : msg.receivedAt;
+    const isCrash = d.alertType === undefined || String(d.alertType).toUpperCase() === 'CRASH';
+    if (!isCrash) {
+      addAlert({
+        crash: false,
+        severity: d.severity === 'CRITICAL' ? 'CRITICAL' : 'WARNING',
+        motoId: msg.motoId,
+        time,
+        title: translate(d.alertType),
+        message: d.message || '',
+        lat: d.latitude,
+        lon: d.longitude,
+      });
+      return;
+    }
     addAlert({
       crash: true,
       severity: 'CRITICAL',
       motoId: msg.motoId,
-      time: d.detectedAt || msg.receivedAt,
+      time,
       title: 'Caída detectada',
       message: typeof d.impactG === 'number'
-        ? `Impacto de ${fmt(d.impactG, 2)} g a ${fmt(d.speedBeforeCrash)} km/h · moto tumbada a ${fmt(d.leanAngle)}°`
+        ? `Impacto de ${fmt(Math.abs(d.impactG), 2)} g a ${fmt(d.speedBeforeCrash)} km/h · moto tumbada a ${fmt(d.leanAngle)}°`
         : `Moto tumbada (${fmt(d.leanAngle)}°) y parada`,
       lat: d.latitude,
       lon: d.longitude,
@@ -317,7 +338,8 @@
   function statusChangeAlert(moto, previous) {
     const order = { NORMAL: 0, WARNING: 1, CRITICAL: 2 };
     const now = moto.eval.status;
-    if (!previous || order[now] <= order[previous]) return;
+    // Una moto nueva cuenta como NORMAL: si su primera lectura ya es mala, también avisa
+    if (!(order[now] > order[previous || 'NORMAL'])) return;
     const d = moto.latest.data;
     const crash = moto.eval.reasons.includes('Crash detected');
     if (crash && moto.eval.fromEdge) return; // el Edge ya manda su propia alerta de caída
@@ -350,14 +372,21 @@
       if (!selectedId) selectedId = moto.id;
     }
 
+    // Al reconectar, la foto del servidor repite la última lectura que ya tenemos:
+    // no se vuelve a meter en las gráficas ni en el rastro
+    if (quiet && moto.latest && moto.latest.receivedAt === msg.receivedAt) return;
+
     const previous = moto.eval ? moto.eval.status : null;
     moto.latest = msg;
-    moto.lastSeen = Date.now();
+    // Hora real de la lectura (no la de llegada al navegador): así una moto que
+    // dejó de enviar hace rato sale apagada aunque venga en la foto inicial
+    const received = Date.parse(msg.receivedAt);
+    moto.lastSeen = Number.isNaN(received) ? Date.now() : Math.min(received, Date.now());
     moto.eval = evaluate(msg.data);
 
     const d = msg.data;
     const h = moto.history;
-    h.time.push(timeOf(d.timestamp || msg.receivedAt));
+    h.time.push(timeOf(isValidTime(d.timestamp) ? d.timestamp : msg.receivedAt));
     h.speed.push(d.speed);
     h.rpm.push(d.rpm);
     h.temp.push(d.engineTemperature);
@@ -383,12 +412,12 @@
       // Al (re)conectar, el servidor manda las alertas que guarda: se empieza de cero
       alerts.length = 0;
       $('alerts').replaceChildren();
-      (msg.alerts || []).slice().reverse().forEach(addCrashAlert);
+      (msg.alerts || []).slice().reverse().forEach(addServerAlert);
       (msg.motos || []).forEach((m) => handleTelemetry(m, true));
       fitMapOnce();
       select(selectedId);
     } else if (msg.type === 'alert') {
-      addCrashAlert(msg);
+      addServerAlert(msg);
     } else if (msg.type === 'telemetry') {
       handleTelemetry(msg, false);
       fitMapOnce();

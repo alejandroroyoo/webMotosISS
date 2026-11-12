@@ -78,5 +78,5 @@ Después, como en la práctica, añade el remoto de Git que devuelve `az webapp 
 ## Detalles
 
 - Leaflet 1.9.4 y Chart.js 4.4.4 se cargan desde CDN, igual que el Chart.js de la práctica.
-- El mapa usa los mosaicos oscuros gratuitos de CARTO, con datos de OpenStreetMap.
+- El mapa usa los mosaicos de OpenStreetMap (no necesitan API key), oscurecidos con un filtro CSS en `style.css` (`.leaflet-tile-pane`). Los de CARTO ya piden API key.
 - Los umbrales de los colores están al principio de `public/js/dashboard.js` (objeto `T`). Si cambiáis los del Edge, cambiadlos también aquí.
